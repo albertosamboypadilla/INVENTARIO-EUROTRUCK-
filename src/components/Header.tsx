@@ -57,6 +57,10 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-zinc-800 text-zinc-300 border border-zinc-700 uppercase">
                   WMS Almacén
                 </span>
+                <span className="hidden lg:inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800 shadow-sm" title="Firebase Firestore en tiempo real con persistencia IndexedDB offline">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>Nube Firestore</span>
+                </span>
               </div>
               <p className="text-[11px] text-zinc-400 hidden sm:block">
                 Control de Repuestos de Camión • Fotos Dobles • Excel Oficial

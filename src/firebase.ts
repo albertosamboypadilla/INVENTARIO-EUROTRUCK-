@@ -15,14 +15,18 @@ const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 let dbInstance;
 
 try {
-  dbInstance = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager()
-    })
-  }, firebaseConfig.firestoreDatabaseId || undefined);
+  dbInstance = initializeFirestore(
+    app,
+    {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    },
+    firebaseConfig.firestoreDatabaseId || undefined
+  );
 } catch (err) {
   console.warn('initializeFirestore with persistentLocalCache warning, falling back to standard getFirestore:', err);
-  dbInstance = getFirestore(app);
+  dbInstance = getFirestore(app, firebaseConfig.firestoreDatabaseId || undefined);
   enableIndexedDbPersistence(dbInstance).catch((pErr) => {
     console.info('Firestore offline persistence enable result:', pErr.code);
   });

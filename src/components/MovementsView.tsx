@@ -36,196 +36,212 @@ export const MovementsView: React.FC<MovementsViewProps> = ({ movements, onBackT
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 animate-fadeIn">
       {/* Top Banner */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl text-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-4 sm:p-5 shadow-xl text-zinc-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           {onBackToDashboard && (
             <button
               onClick={onBackToDashboard}
-              className="px-3.5 py-2.5 bg-blue-900/80 hover:bg-blue-800 text-blue-200 border border-blue-700/80 rounded-xl font-black text-xs transition active:scale-95 shrink-0 flex items-center gap-1.5 cursor-pointer shadow-md"
+              className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-xl font-bold text-xs transition active:scale-95 shrink-0 flex items-center gap-1.5 cursor-pointer shadow-sm"
               title="Volver al Menú Principal"
             >
-              <ArrowLeft className="w-4 h-4 text-blue-300" />
+              <ArrowLeft className="w-4 h-4 text-zinc-300" />
               <span>← Atrás</span>
             </button>
           )}
 
-          <div>
-            <div className="flex items-center gap-2">
-              <History className="w-6 h-6 text-blue-400" />
-              <h2 className="text-xl font-bold text-white">Kardex y Historial de Movimientos</h2>
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-2xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-200 shadow-sm shrink-0">
+              <History className="w-5 h-5" />
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              Registro de trazabilidad de entradas, picking de salidas, mermas y reubicaciones de góndola.
-            </p>
+            <div>
+              <h2 className="text-base sm:text-xl font-black text-white">Kardex y Historial de Movimientos</h2>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                Registro de trazabilidad de entradas, picking de salidas, mermas y reubicaciones de góndola.
+              </p>
+            </div>
           </div>
         </div>
 
         <button
           onClick={() => exportMovementsToExcel(movements)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/30 transition self-start md:self-auto"
+          className="inline-flex items-center gap-2 px-3.5 py-2 bg-zinc-100 hover:bg-white text-zinc-950 font-black text-xs rounded-xl shadow-md border border-zinc-300 transition active:scale-95 self-start md:self-auto cursor-pointer"
         >
           <FileSpreadsheet className="w-4 h-4" />
-          <span>Exportar Kardex a Excel</span>
+          <span>Exportar a Excel</span>
         </button>
       </div>
 
-      {/* Filter Bar */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Buscar por producto, operario o notas..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl pl-9 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto">
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-zinc-900 p-3 rounded-2xl border border-zinc-800">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
           <button
             onClick={() => setTypeFilter('ALL')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition whitespace-nowrap ${
+            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer ${
               typeFilter === 'ALL'
-                ? 'bg-blue-600 text-white'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                ? 'bg-zinc-100 text-zinc-950 font-black border border-zinc-300 shadow-sm'
+                : 'bg-zinc-950 text-zinc-400 border border-zinc-800 hover:bg-zinc-800 hover:text-white'
             }`}
           >
             Todos ({movements.length})
           </button>
           <button
             onClick={() => setTypeFilter('IN')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition whitespace-nowrap ${
+            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer ${
               typeFilter === 'IN'
-                ? 'bg-emerald-600 text-white'
-                : 'bg-slate-800 text-emerald-400 hover:bg-slate-700'
+                ? 'bg-zinc-100 text-zinc-950 font-black border border-zinc-300 shadow-sm'
+                : 'bg-zinc-950 text-zinc-400 border border-zinc-800 hover:bg-zinc-800 hover:text-white'
             }`}
           >
-            Entradas (IN)
+            📥 Entradas
           </button>
           <button
             onClick={() => setTypeFilter('OUT')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition whitespace-nowrap ${
+            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer ${
               typeFilter === 'OUT'
-                ? 'bg-amber-600 text-white'
-                : 'bg-slate-800 text-amber-400 hover:bg-slate-700'
+                ? 'bg-zinc-100 text-zinc-950 font-black border border-zinc-300 shadow-sm'
+                : 'bg-zinc-950 text-zinc-400 border border-zinc-800 hover:bg-zinc-800 hover:text-white'
             }`}
           >
-            Salidas (OUT)
+            📤 Salidas
           </button>
           <button
             onClick={() => setTypeFilter('RELOCATION')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition whitespace-nowrap ${
+            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer ${
               typeFilter === 'RELOCATION'
-                ? 'bg-purple-600 text-white'
-                : 'bg-slate-800 text-purple-400 hover:bg-slate-700'
+                ? 'bg-zinc-100 text-zinc-950 font-black border border-zinc-300 shadow-sm'
+                : 'bg-zinc-950 text-zinc-400 border border-zinc-800 hover:bg-zinc-800 hover:text-white'
             }`}
           >
-            Reubicaciones
+            🔄 Reubicaciones
           </button>
+        </div>
+
+        <div className="relative w-full sm:w-64">
+          <Search className="w-4 h-4 absolute left-3 top-2.5 text-zinc-400" />
+          <input
+            type="text"
+            placeholder="Buscar por repuesto, código..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-zinc-950 border border-zinc-700 text-white rounded-xl pl-9 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-400"
+          />
         </div>
       </div>
 
-      {/* Movements Audit List */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden text-slate-100">
+      {/* Movements Table / Cards */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950 text-slate-400 font-bold uppercase tracking-wider border-b border-slate-800">
+          <table className="w-full text-left text-xs text-zinc-300">
+            <thead className="bg-zinc-950 text-zinc-400 uppercase font-black tracking-wider text-[10px] border-b border-zinc-800">
               <tr>
-                <th className="py-3.5 px-4">Fecha / Hora</th>
-                <th className="py-3.5 px-4">Tipo Movimiento</th>
-                <th className="py-3.5 px-4">Producto & Código</th>
-                <th className="py-3.5 px-4 text-center">Cantidad</th>
-                <th className="py-3.5 px-4">Ubicación Origen → Destino</th>
-                <th className="py-3.5 px-4">Operador & Notas</th>
+                <th className="px-4 py-3">Tipo</th>
+                <th className="px-4 py-3">Artículo & Código</th>
+                <th className="px-4 py-3 text-center">Cantidad</th>
+                <th className="px-4 py-3">Ruta / Góndola</th>
+                <th className="px-4 py-3">Operador</th>
+                <th className="px-4 py-3">Fecha y Hora</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 font-medium">
-              {filteredMovements.map((m) => {
-                let badgeClass = 'bg-blue-950 text-blue-400 border-blue-800';
-                if (m.type === 'IN')
-                  badgeClass = 'bg-emerald-950 text-emerald-400 border-emerald-800';
-                else if (m.type === 'OUT')
-                  badgeClass = 'bg-amber-950 text-amber-400 border-amber-800';
-                else if (m.type === 'RELOCATION')
-                  badgeClass = 'bg-purple-950 text-purple-400 border-purple-800';
+            <tbody className="divide-y divide-zinc-800/80">
+              {filteredMovements.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-10 text-zinc-500">
+                    No se encontraron movimientos registrados en el Kardex.
+                  </td>
+                </tr>
+              ) : (
+                filteredMovements.map((mov) => {
+                  const isEntry = mov.type === 'IN';
+                  const isExit = mov.type === 'OUT';
 
-                return (
-                  <tr key={m.id} className="hover:bg-slate-800/50 transition">
-                    {/* Timestamp */}
-                    <td className="py-3.5 px-4 text-slate-300 font-mono text-[11px] whitespace-nowrap">
-                      {new Date(m.createdAt).toLocaleString('es-ES', {
-                        day: '2-digit',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </td>
-
-                    {/* Type Badge */}
-                    <td className="py-3.5 px-4">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${badgeClass}`}
-                      >
-                        {m.type === 'IN' && <PackageCheck className="w-3.5 h-3.5" />}
-                        {m.type === 'OUT' && <PackageMinus className="w-3.5 h-3.5" />}
-                        {m.type === 'RELOCATION' && <RefreshCw className="w-3.5 h-3.5" />}
-                        <span>
-                          {m.type === 'IN'
-                            ? 'ENTRADA'
-                            : m.type === 'OUT'
-                            ? 'SALIDA'
-                            : m.type === 'RELOCATION'
-                            ? 'REUBICACIÓN'
-                            : m.type}
+                  return (
+                    <tr key={mov.id} className="hover:bg-zinc-950/60 transition">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase ${
+                            isEntry
+                              ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                              : isExit
+                              ? 'bg-rose-950 text-rose-300 border border-rose-800'
+                              : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
+                          }`}
+                        >
+                          {isEntry ? (
+                            <>
+                              <PackageCheck className="w-3 h-3 text-emerald-400" />
+                              Entrada
+                            </>
+                          ) : isExit ? (
+                            <>
+                              <PackageMinus className="w-3 h-3 text-rose-400" />
+                              Salida
+                            </>
+                          ) : (
+                            <>
+                              <RefreshCw className="w-3 h-3 text-zinc-400" />
+                              Reubicación
+                            </>
+                          )}
                         </span>
-                      </span>
-                    </td>
+                      </td>
 
-                    {/* Product */}
-                    <td className="py-3.5 px-4">
-                      <div className="font-bold text-white text-sm">{m.productName}</div>
-                      <div className="font-mono text-[11px] text-slate-400">
-                        EAN: {m.productBarcode}
-                      </div>
-                    </td>
-
-                    {/* Quantity & Delta Stock */}
-                    <td className="py-3.5 px-4 text-center">
-                      <span className="font-extrabold text-sm text-white">
-                        {m.type === 'IN' ? `+${m.quantity}` : m.type === 'OUT' ? `-${m.quantity}` : m.quantity}
-                      </span>
-                      <div className="text-[10px] text-slate-400 font-mono">
-                        {m.previousStock} u. → {m.newStock} u.
-                      </div>
-                    </td>
-
-                    {/* Locations */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-slate-300">
-                        <span className="text-slate-400">{m.sourceLocation || 'N/A'}</span>
-                        <ArrowRight className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                        <span className="text-emerald-400">{m.targetLocation || 'N/A'}</span>
-                      </div>
-                    </td>
-
-                    {/* Operator & Notes */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-1 text-slate-300 font-bold text-xs">
-                        <User className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{m.operator}</span>
-                      </div>
-                      {m.notes && (
-                        <div className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">
-                          {m.notes}
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-white text-xs">{mov.productName}</div>
+                        <div className="text-[10px] text-zinc-400 font-mono">
+                          {mov.productBarcode}
                         </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+
+                      <td className="px-4 py-3 text-center whitespace-nowrap font-mono font-bold">
+                        <span
+                          className={`text-sm ${
+                            isEntry ? 'text-emerald-400' : isExit ? 'text-rose-400' : 'text-zinc-300'
+                          }`}
+                        >
+                          {isEntry ? '+' : isExit ? '-' : ''}
+                          {mov.quantity}
+                        </span>
+                      </td>
+
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 font-mono text-[11px]">
+                          {mov.fromLocation && (
+                            <span className="bg-zinc-950 px-2 py-0.5 rounded border border-zinc-800 text-zinc-400">
+                              {mov.fromLocation}
+                            </span>
+                          )}
+                          {mov.fromLocation && mov.toLocation && (
+                            <ArrowRight className="w-3 h-3 text-zinc-500" />
+                          )}
+                          {mov.toLocation && (
+                            <span className="bg-zinc-950 px-2 py-0.5 rounded border border-zinc-800 text-zinc-200 font-bold">
+                              {mov.toLocation}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 text-zinc-400">
+                          <User className="w-3.5 h-3.5 text-zinc-500" />
+                          <span>{mov.operator || 'Operador'}</span>
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3 whitespace-nowrap text-zinc-400 font-mono text-[11px]">
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-zinc-500" />
+                          <span>
+                            {new Date(mov.timestamp).toLocaleDateString()} {new Date(mov.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>

@@ -30,7 +30,7 @@ interface DashboardViewProps {
   products: Product[];
   locations: Location[];
   movements: Movement[];
-  onNavigateTab: (tab: 'products' | 'gondolas' | 'scanner' | 'thermal' | 'movements') => void;
+  onNavigateTab: (tab: 'products' | 'inventory' | 'gondolas' | 'scanner' | 'thermal' | 'movements') => void;
   onOpenAddModal: () => void;
   onExportCleanExcel: () => void;
   onOpenPrintLabel: (product: Product) => void;
@@ -411,7 +411,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-3">
           {/* 1. BOTÓN: + AGREGAR ARTÍCULO */}
           <button
             onClick={onOpenAddModal}
@@ -421,16 +421,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span>+ AGREGAR ARTÍCULO</span>
           </button>
 
-          {/* 2. BOTÓN: VER INVENTARIO */}
+          {/* 2. BOTÓN: CONTEO & INVENTARIAR */}
+          <button
+            onClick={() => onNavigateTab('inventory')}
+            className="w-full py-2.5 px-3.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 font-bold text-xs sm:text-sm rounded-xl shadow-sm border border-zinc-700 active:scale-95 transition flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span>INVENTARIAR (CONTEO)</span>
+          </button>
+
+          {/* 3. BOTÓN: VER INVENTARIO */}
           <button
             onClick={() => onNavigateTab('products')}
             className="w-full py-2.5 px-3.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 font-bold text-xs sm:text-sm rounded-xl shadow-sm border border-zinc-700 active:scale-95 transition flex items-center justify-center gap-2 cursor-pointer"
           >
             <Eye className="w-4 h-4" />
-            <span>VER INVENTARIO</span>
+            <span>VER REPUESTOS</span>
           </button>
 
-          {/* 3. BOTÓN: DESCARGAR EXCEL */}
+          {/* 4. BOTÓN: DESCARGAR EXCEL */}
           <button
             onClick={onExportCleanExcel}
             className="w-full py-2.5 px-3.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs sm:text-sm rounded-xl shadow-sm border border-zinc-700 active:scale-95 transition flex items-center justify-center gap-2 cursor-pointer"

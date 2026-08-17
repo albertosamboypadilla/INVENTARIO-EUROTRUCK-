@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Product, ProductUnit, Location } from '../types';
 import { generateNonRepeatingBarcode } from '../utils/barcode';
+import { GondolaTramoPicker, parseGondolaTramo } from './GondolaTramoPicker';
 import {
   X,
   Sparkles,
@@ -321,121 +322,13 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             />
           </div>
 
-          {/* 2. UBICACIÓN EN GÓNDOLA (PISO / TRAMO - EJEMPLO: 1C1) */}
-          <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-black text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-blue-400" /> UBICACIÓN EN GÓNDOLA (PISO / TRAMO - EJ: 1C1)
-              </label>
-
-              <button
-                type="button"
-                onClick={() => setIsCustomLocationMode(!isCustomLocationMode)}
-                className="text-[11px] font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-lg border border-slate-700 transition flex items-center gap-1 cursor-pointer"
-              >
-                <Edit3 className="w-3 h-3 text-blue-400" />
-                <span>{isCustomLocationMode ? 'Ver Lista' : '+ Escribir Piso/Tramo'}</span>
-              </button>
-            </div>
-
-            {/* Accesos rápidos fáciles para Ubicaciones 1b1, 1b2, 1b3, 1b4, 1C1, etc. */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-300 block">
-                  📍 Selecciona Ubicación (Opciones Rápidas):
-                </span>
-                <div className="flex items-center gap-1">
-                  {['1b1', '1b2', '1b3', '1b4'].map((locCode) => (
-                    <button
-                      key={locCode}
-                      type="button"
-                      onClick={() => {
-                        setSelectedLocation(locCode);
-                        setCustomLocationText(locCode);
-                        setIsCustomLocationMode(false);
-                      }}
-                      className={`px-2 py-0.5 text-[11px] font-black rounded-md border transition cursor-pointer ${
-                        (!isCustomLocationMode && selectedLocation === locCode) || customLocationText === locCode
-                          ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-sm'
-                          : 'bg-amber-950/40 text-amber-300 border-amber-800/60 hover:bg-amber-900/60'
-                      }`}
-                    >
-                      {locCode}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-1 bg-slate-900/60 rounded-xl border border-slate-800">
-                {gondolaList.map((gName) => {
-                  const isActive = !isCustomLocationMode ? selectedLocation === gName : customLocationText === gName;
-                  return (
-                    <div
-                      key={gName}
-                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition border ${
-                        isActive
-                          ? 'bg-blue-600 text-white border-blue-400 font-black shadow-md'
-                          : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-700'
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedLocation(gName);
-                          setCustomLocationText(gName);
-                          setIsCustomLocationMode(false);
-                        }}
-                        className="cursor-pointer font-mono font-bold"
-                      >
-                        📍 {gName}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveGondolaFromList(gName);
-                        }}
-                        title={`Quitar ${gName}`}
-                        className="ml-1 text-slate-400 hover:text-rose-400 hover:bg-rose-950 p-0.5 rounded cursor-pointer transition"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {!isCustomLocationMode ? (
-              <select
-                value={selectedLocation}
-                onChange={(e) => setSelectedLocation(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 text-blue-300 rounded-xl px-3.5 py-2.5 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-              >
-                {gondolaList.map((g, idx) => (
-                  <option key={idx} value={g} className="bg-slate-900 text-white font-mono font-bold">
-                    📍 {g}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Escribe la ubicación exactas (Ejemplo: 1C1, 2A2, 3B1)"
-                  value={customLocationText}
-                  onChange={(e) => setCustomLocationText(e.target.value)}
-                  className="flex-1 bg-slate-900 border border-slate-700 text-blue-300 rounded-xl px-3.5 py-2.5 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleAddGondolaToList(customLocationText)}
-                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs rounded-xl shadow cursor-pointer shrink-0"
-                >
-                  + AGREGAR
-                </button>
-              </div>
-            )}
-          </div>
+          {/* 2. UBICACIÓN EN GÓNDOLA Y TRAMO */}
+          <GondolaTramoPicker
+            value={selectedLocation}
+            onChange={(code) => setSelectedLocation(code)}
+            availableLocations={locations.map((l) => l.code)}
+            label="UBICACIÓN: GÓNDOLA Y TRAMO (EJ: 1C2)"
+          />
 
           {/* 3. DATOS DEL ARTÍCULO: NOMBRE DE PIEZA, MODELO DE VEHÍCULO Y MODELO DE PIEZA */}
           <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 space-y-3">

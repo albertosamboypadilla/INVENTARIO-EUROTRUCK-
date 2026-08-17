@@ -146,14 +146,18 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         if (parts.length < 2) parts = line.split(',');
 
         if (parts.length >= 2) {
-          const rawNo = parts[0]?.trim() || `${idx + 1}`;
+          const barcode = parts[0]?.trim() || `ART-${String(idx + 1).padStart(6, '0')}`;
           const name = parts[1]?.trim();
           if (!name || name.toUpperCase().includes('DESCRIPCION') || name.toUpperCase().includes('DESCRIPCIÓN')) return;
 
-          const refOEM = parts[2]?.trim() || 'S/R';
-          const estante = parts[3]?.trim() || '1C1';
-          const tramo = parts[4]?.trim() || '1C1';
-          const barcode = parts[5]?.trim() || parts[0]?.trim() || `ART-${String(idx + 1).padStart(6, '0')}`;
+          const estante = parts[2]?.trim() || '1b';
+          const tramo = parts[3]?.trim() || '1';
+          const countQty = parts[4] !== undefined && !isNaN(Number(parts[4])) ? Number(parts[4]) : 1;
+          const refOEM = parts[5]?.trim() || '';
+
+          const locCode = /^[0-9]+[a-zA-Z]+$/i.test(estante) && /^[0-9]+$/.test(tramo)
+            ? `${estante}${tramo}`
+            : `${estante}-${tramo}`;
 
           parsedItems.push({
             id: `pasted_${idx}_${Date.now()}`,
@@ -166,18 +170,23 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             referenceOEM: refOEM,
             unit: 'Unidad',
             minStock: 2,
-            currentStock: 10,
+            currentStock: countQty,
             majorBoxQty: 1,
             warehouseCode: '01',
             estante,
             tramo,
-            locationCode: `Góndola ${estante} - Tramo ${tramo}`,
+            locationCode: locCode,
             counterName: 'Importación Manual',
             priceCost: 45.0,
             priceSale: 75.0,
-            notes: `Cargado vía pegado directo. Ref OEM: ${refOEM}`,
+            notes: `Cargado con Conteo Físico. Góndola ${estante} Tramo ${tramo}`,
             createdAt: now,
             updatedAt: now,
+            isAudited: true,
+            auditedCount: countQty,
+            auditedAt: now,
+            auditedBy: 'Importación Texto / Conteo',
+            auditedLocation: locCode
           });
         }
       });
@@ -187,7 +196,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       }
 
       const count = await importBulkProductsDoc(parsedItems);
-      setResultMessage(`¡Se han importado exitosamente ${count} productos pegados a la base de datos!`);
+      setResultMessage(`¡Se han importado exitosamente ${count} repuestos con sus conteos físicos y góndolas actualizadas en verde!`);
       setPastedText('');
     } catch (err: any) {
       setErrorMessage(`Error al procesar el texto: ${err.message || String(err)}`);
@@ -199,26 +208,26 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   const downloadSampleTemplate = () => {
     const sampleRows = [
       {
-        'NO. PRODU.': '1',
-        'DESCRIPCION PRODUCTO': 'TAPA TANQUE COMBUSTIBLE ALUMINIO LLAVE',
+        'NO. PRODUCTO': '20398484',
+        'DESCRIPCIÓN PRODUCTO': 'TAPA TANQUE COMBUSTIBLE ALUMINIO LLAVE',
+        'ESTANTE': '1b',
+        'TRAMO': '1',
+        'CONTEO': 12,
+        'ESTADO': 'CONTADO',
         'MARCA DE LA PIEZA': 'Eurotruck OEM',
         'REFERENCIA': '20398484 / 21532057',
-        'ESTANTE': '1C1',
-        'TRAMO': '1C1',
-        'CODIGO BARRAS': '20398484',
-        'CANTIDAD UNIDADES': 10,
         'COSTO': 45.0,
         'PRECIO': 75.0
       },
       {
-        'NO. PRODU.': '2',
-        'DESCRIPCION PRODUCTO': 'VALVULA REGULADORA DE PRESION D13A',
+        'NO. PRODUCTO': '21634021',
+        'DESCRIPCIÓN PRODUCTO': 'VALVULA REGULADORA DE PRESION D13A',
+        'ESTANTE': '1C',
+        'TRAMO': '2',
+        'CONTEO': 8,
+        'ESTADO': 'CONTADO',
         'MARCA DE LA PIEZA': 'Bosch',
         'REFERENCIA': '21634021 / 20796740',
-        'ESTANTE': '1C1',
-        'TRAMO': '1C1',
-        'CODIGO BARRAS': '21634021',
-        'CANTIDAD UNIDADES': 15,
         'COSTO': 85.0,
         'PRECIO': 140.0
       }
@@ -226,8 +235,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(sampleRows);
-    XLSX.utils.book_append_sheet(wb, ws, 'Plantilla Eurotruck WMS');
-    XLSX.writeFile(wb, 'Plantilla_Inventario_Eurotruck.xlsx');
+    XLSX.utils.book_append_sheet(wb, ws, 'Plantilla Conteo Eurotruck');
+    XLSX.writeFile(wb, 'Plantilla_Conteo_Inventario_Eurotruck.xlsx');
   };
 
   return (
@@ -409,17 +418,19 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         {/* TAB 2: EXCEL UPLOAD */}
         {activeTab === 'excel' && (
           <div className="space-y-3">
-            <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700/80 flex items-center justify-between gap-3 text-xs">
+            <div className="p-3 bg-emerald-950/70 rounded-xl border border-emerald-700/80 flex items-center justify-between gap-3 text-xs">
               <div>
-                <span className="font-bold text-white block">¿Necesitas la plantilla Excel?</span>
-                <span className="text-slate-400">Descarga nuestro formato preparado con Marca de Pieza y Góndola 1C1.</span>
+                <span className="font-bold text-emerald-300 block">📊 ¡Importa con Conteo, Góndola y Tramo!</span>
+                <span className="text-emerald-400/90 text-[11px]">
+                  Lee columnas de Conteo/Cantidad, Góndola (ej: 1b, 1C) y Tramo (1, 2, 3), y los pone en verde automáticamente.
+                </span>
               </div>
               <button
                 onClick={downloadSampleTemplate}
-                className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-blue-300 font-bold rounded-lg text-xs flex items-center gap-1 shrink-0"
+                className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white font-bold rounded-lg text-xs flex items-center gap-1 shrink-0 shadow cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Plantilla</span>
+                <span>Plantilla Conteo</span>
               </button>
             </div>
 

@@ -772,26 +772,72 @@ export async function importProductsFromExcel(
           const row = rows[r];
           if (!row || row.length === 0) continue;
 
-          const barcode = getColVal(row, ['NO. PRODUCTO', 'Código de Barra', 'Barcode', 'no. producto']);
-          const name = getColVal(row, ['DESCRIPCIÓN PRODUCTO', 'Nombre del Artículo', 'Nombre del Producto', 'Descripción']);
+          const barcode = getColVal(row, ['NO. PRODUCTO', 'Código de Barra', 'Barcode', 'no. producto', 'CODIGO', 'CÓDIGO']);
+          const name = getColVal(row, ['DESCRIPCIÓN PRODUCTO', 'Nombre del Artículo', 'Nombre del Producto', 'Descripción', 'DESCRIPCION', 'ARTICULO', 'REPUESTO']);
 
           if (!barcode || !name) continue;
 
-          const sku = getColVal(row, ['SKU', 'sku']) || `SKU-${barcode.slice(-6)}`;
-          const category = getColVal(row, ['Categoría', 'category']) || 'Repuestos General';
+          const sku = getColVal(row, ['SKU', 'sku', 'Clave']) || `SKU-${barcode.slice(-6)}`;
+          const category = getColVal(row, ['Categoría', 'category', 'CATEGORIA']) || 'Repuestos General';
           const brandComp = getColVal(row, ['Compatibilidad', 'Compatibilidad Camión', 'Marca Compatibilidad']) || 'Volvo Trucks';
           const partBrand = getColVal(row, ['Marca de la Pieza', 'Marca Pieza', 'Fabricante', 'Part Brand', 'Marca']) || 'Eurotruck / Genuine OEM';
-          const refOEM = getColVal(row, ['REFERENCIA', 'Referencia OEM', 'OEM']) || '';
-          const currentStock = Number(getColVal(row, ['CANTIDAD UNIDADES', 'Cantidad (Stock)', 'Stock']) || 0);
-          const estanteVal = getColVal(row, ['ESTANTE', 'Estante', 'Góndola']) || '1C1';
-          const tramoVal = getColVal(row, ['TRAMO', 'Tramo', 'Nivel']) || '1C1';
-          const locationCode = getColVal(row, ['Ubicación (Góndola)', 'Ubicacion']) || `Góndola ${estanteVal} - Tramo ${tramoVal}`;
-          const priceCost = Number(getColVal(row, ['COSTO', 'Costo ($)']) || 0);
-          const priceSale = Number(getColVal(row, ['PRECIO', 'Precio ($)']) || 0);
-          const counterName = getColVal(row, ['CONTADOR', 'Contador']) || '';
-          const majorBoxQty = Number(getColVal(row, ['CANTIDAD EMP. MAYOR']) || 0);
+          const refOEM = getColVal(row, ['REFERENCIA', 'Referencia OEM', 'OEM', 'REF']) || '';
+
+          // Read Count / Stock / Conteo Físico
+          const rawCountVal = getColVal(row, [
+            'CONTEO',
+            'CONTEO FISICO',
+            'CONTEO FÍSICO',
+            'CANTIDAD CONTADA',
+            'STOCK CONTADO',
+            'CANTIDAD UNIDADES',
+            'Cantidad (Stock)',
+            'Cantidad',
+            'CANTIDAD',
+            'Stock',
+            'STOCK'
+          ]);
+          const currentStock = rawCountVal !== '' && !isNaN(Number(rawCountVal)) ? Number(rawCountVal) : 0;
+
+          // Read Gondola / Estante / Tramo
+          const estanteVal = getColVal(row, ['ESTANTE', 'Estante', 'Góndola', 'GONDOLA', 'GÓNDOLA']) || '1b';
+          const tramoVal = getColVal(row, ['TRAMO', 'Tramo', 'Nivel', 'Piso']) || '1';
+          
+          let locationCode = getColVal(row, ['Ubicación (Góndola)', 'Ubicacion', 'UBICACION', 'UBICACIÓN']);
+          if (!locationCode) {
+            if (/^[0-9]+[a-zA-Z]+$/i.test(estanteVal) && /^[0-9]+$/.test(tramoVal)) {
+              locationCode = `${estanteVal}${tramoVal}`;
+            } else {
+              locationCode = `${estanteVal}-${tramoVal}`;
+            }
+          }
+
+          const priceCost = Number(getColVal(row, ['COSTO', 'Costo ($)', 'COSTO ($)']) || 0);
+          const priceSale = Number(getColVal(row, ['PRECIO', 'Precio ($)', 'PRECIO ($)']) || 0);
+          const counterName = getColVal(row, ['CONTADOR', 'Contador', 'AUDITADO POR', 'OPERADOR']) || '';
+          const majorBoxQty = Number(getColVal(row, ['CANTIDAD EMP. MAYOR', 'EMP. MAYOR']) || 0);
+          
+          const rawAuditStatus = getColVal(row, ['ESTADO', 'AUDITADO', 'ESTADO CONTEO', 'CONTADO', 'ESTADO (CONTADO EN VERDE / PENDIENTE)']).toLowerCase();
+          const shouldMarkAudited =
+            rawAuditStatus.includes('contado') ||
+            rawAuditStatus.includes('verde') ||
+            rawAuditStatus.includes('si') ||
+            rawAuditStatus.includes('sí') ||
+            rawAuditStatus.includes('true') ||
+            rawAuditStatus.includes('ok') ||
+            rawCountVal !== '';
 
           const existing = currentProducts.find((p) => p.barcode === barcode || p.sku === sku);
+
+          const auditData = shouldMarkAudited
+            ? {
+                isAudited: true,
+                auditedAt: new Date().toISOString(),
+                auditedBy: counterName || 'Importación Excel',
+                auditedLocation: locationCode,
+                auditedCount: currentStock,
+              }
+            : {};
 
           if (existing) {
             await updateProductDoc(existing.id, {
@@ -807,8 +853,9 @@ export async function importProductsFromExcel(
               locationCode,
               priceCost,
               priceSale,
-              counterName,
+              counterName: counterName || existing.counterName || '',
               majorBoxQty,
+              ...auditData,
             });
             updatedCount++;
           } else {
@@ -832,6 +879,8 @@ export async function importProductsFromExcel(
               majorBoxQty,
               warehouseCode: '01',
               notes: 'Importado desde Excel Eurotruck',
+              isAudited: shouldMarkAudited,
+              ...(shouldMarkAudited ? auditData : {}),
             });
             addedCount++;
           }

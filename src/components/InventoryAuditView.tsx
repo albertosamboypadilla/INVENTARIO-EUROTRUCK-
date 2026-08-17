@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Product, ProductUnit, Location } from '../types';
 import { generateNonRepeatingBarcode } from '../utils/barcode';
 import { recordProductAuditDoc, resetAllProductAuditsDoc } from '../services/wmsService';
+import { GondolaTramoPicker, parseGondolaTramo } from './GondolaTramoPicker';
 import {
   CheckCircle2,
   Barcode,
@@ -27,7 +28,9 @@ import {
   Zap,
   Clock,
   Radio,
-  User
+  User,
+  Grid,
+  Filter
 } from 'lucide-react';
 
 interface InventoryAuditViewProps {
@@ -54,6 +57,8 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
   // Search & Barcode input
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedLocationFilter, setSelectedLocationFilter] = useState<string>('ALL');
+  const [gondolaFilter, setGondolaFilter] = useState<string>('ALL');
+  const [tramoFilter, setTramoFilter] = useState<string>('ALL');
   const [listTab, setListTab] = useState<'ALL' | 'REVIEWED' | 'PENDING'>('ALL');
 
   // Currently Active Item in Counter
@@ -345,6 +350,17 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
 
     if (selectedLocationFilter !== 'ALL' && p.locationCode !== selectedLocationFilter) return false;
 
+    const locCode = p.locationCode || p.estante || '';
+    const parsed = parseGondolaTramo(locCode);
+
+    if (gondolaFilter !== 'ALL' && parsed.gondola.toLowerCase() !== gondolaFilter.toLowerCase()) {
+      return false;
+    }
+
+    if (tramoFilter !== 'ALL' && parsed.tramo !== tramoFilter) {
+      return false;
+    }
+
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase();
       const matches =
@@ -633,42 +649,13 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
             </div>
           )}
 
-          {/* GÓNDOLA / UBICACIÓN (SELECCIÓN RÁPIDA CON 1 TOQUE) */}
-          <div className="bg-zinc-950 p-3.5 rounded-2xl border border-zinc-800 space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-black text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-emerald-400" /> UBICACIÓN / GÓNDOLA DONDE ESTÁ:
-              </label>
-              <span className="text-xs font-bold text-white font-mono bg-zinc-900 px-2.5 py-0.5 rounded-xl border border-zinc-700">
-                {locationCode}
-              </span>
-            </div>
-
-            <div className="flex flex-wrap gap-1.5">
-              {quickLocations.map((loc) => (
-                <button
-                  key={loc}
-                  type="button"
-                  onClick={() => setLocationCode(loc)}
-                  className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition cursor-pointer ${
-                    locationCode === loc
-                      ? 'bg-zinc-100 text-zinc-950 font-black border-zinc-300 shadow-md ring-2 ring-emerald-400'
-                      : 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:bg-zinc-800 hover:text-white'
-                  }`}
-                >
-                  📍 {loc}
-                </button>
-              ))}
-            </div>
-
-            <input
-              type="text"
-              value={locationCode}
-              onChange={(e) => setLocationCode(e.target.value)}
-              placeholder="O escribe otra ubicación manual..."
-              className="w-full bg-zinc-900 border border-zinc-700 text-zinc-200 rounded-xl px-3 py-1.5 text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400"
-            />
-          </div>
+          {/* GÓNDOLA Y TRAMO: SELECTOR INTERACTIVO PARA CELULAR Y PC */}
+          <GondolaTramoPicker
+            value={locationCode}
+            onChange={(newCode) => setLocationCode(newCode)}
+            availableLocations={locations.map((l) => l.code)}
+            label="📍 UBICACIÓN EN ALMACÉN (GÓNDOLA Y TRAMO)"
+          />
 
           {/* CANTIDAD CONTADA (ENORME Y SÚPER FÁCIL) */}
           <div className="bg-zinc-950 p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/80 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -816,74 +803,124 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
 
       {/* 📋 LISTA DE REPUESTOS CON TABS: TODOS | ✅ YA EN VERDE | ⏳ PENDIENTES */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-4 sm:p-5 shadow-xl space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-zinc-800">
-          {/* List Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-            <button
-              type="button"
-              onClick={() => setListTab('ALL')}
-              className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition cursor-pointer ${
-                listTab === 'ALL'
-                  ? 'bg-zinc-100 text-zinc-950 font-black border-zinc-300 shadow-sm'
-                  : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:bg-zinc-800 hover:text-white'
-              }`}
-            >
-              Todos ({products.length})
-            </button>
+        <div className="space-y-2 pb-3 border-b border-zinc-800">
+          {/* Row 1: Status Tabs (Todos, ✅ Contados en Verde, ⏳ Pendientes) */}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              <button
+                type="button"
+                onClick={() => setListTab('ALL')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition cursor-pointer ${
+                  listTab === 'ALL'
+                    ? 'bg-zinc-100 text-zinc-950 font-black border-zinc-300 shadow-sm'
+                    : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:bg-zinc-800 hover:text-white'
+                }`}
+              >
+                Todos ({products.length})
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setListTab('REVIEWED')}
-              className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition cursor-pointer flex items-center gap-1.5 ${
-                listTab === 'REVIEWED'
-                  ? 'bg-emerald-400 text-zinc-950 font-black border-emerald-300 shadow-sm'
-                  : 'bg-emerald-950/60 text-emerald-300 border-emerald-800 hover:bg-emerald-900/60'
-              }`}
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>✅ Contados en Verde ({totalReviewed})</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setListTab('REVIEWED')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition cursor-pointer flex items-center gap-1.5 ${
+                  listTab === 'REVIEWED'
+                    ? 'bg-emerald-400 text-zinc-950 font-black border-emerald-300 shadow-sm'
+                    : 'bg-emerald-950/60 text-emerald-300 border-emerald-800 hover:bg-emerald-900/60'
+                }`}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>✅ En Verde ({totalReviewed})</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setListTab('PENDING')}
-              className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition cursor-pointer flex items-center gap-1.5 ${
-                listTab === 'PENDING'
-                  ? 'bg-amber-400 text-zinc-950 font-black border-amber-300 shadow-sm'
-                  : 'bg-amber-950/60 text-amber-300 border-amber-800 hover:bg-amber-900/60'
-              }`}
-            >
-              <Clock className="w-3.5 h-3.5" />
-              <span>⏳ Pendientes ({totalPending})</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setListTab('PENDING')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition cursor-pointer flex items-center gap-1.5 ${
+                  listTab === 'PENDING'
+                    ? 'bg-amber-400 text-zinc-950 font-black border-amber-300 shadow-sm'
+                    : 'bg-amber-950/60 text-amber-300 border-amber-800 hover:bg-amber-900/60'
+                }`}
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>⏳ Pendientes ({totalPending})</span>
+              </button>
+            </div>
+
+            {(gondolaFilter !== 'ALL' || tramoFilter !== 'ALL' || selectedLocationFilter !== 'ALL') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setGondolaFilter('ALL');
+                  setTramoFilter('ALL');
+                  setSelectedLocationFilter('ALL');
+                }}
+                className="text-[11px] font-bold text-rose-400 hover:text-rose-300 flex items-center gap-1 cursor-pointer"
+              >
+                <span>Limpiar Filtros de Ubicación</span>
+              </button>
+            )}
           </div>
 
-          {/* Filter by Gondola */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-            <span className="text-[11px] font-bold text-zinc-400 uppercase shrink-0">Góndola:</span>
+          {/* Row 2: Filter by Gondola */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
+            <span className="text-[11px] font-bold text-zinc-400 uppercase shrink-0 flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5 text-emerald-400" /> Góndola:
+            </span>
             <button
               type="button"
-              onClick={() => setSelectedLocationFilter('ALL')}
+              onClick={() => setGondolaFilter('ALL')}
               className={`px-2.5 py-1 text-xs font-bold rounded-xl border transition cursor-pointer shrink-0 ${
-                selectedLocationFilter === 'ALL'
+                gondolaFilter === 'ALL'
                   ? 'bg-zinc-100 text-zinc-950 font-black border-zinc-300'
                   : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:bg-zinc-800'
               }`}
             >
               Todas
             </button>
-            {quickLocations.slice(0, 6).map((loc) => (
+            {['1b', '1C', '2A', '2B', '3A', '3C', '4A', '5A', '6B'].map((g) => (
               <button
-                key={loc}
+                key={g}
                 type="button"
-                onClick={() => setSelectedLocationFilter(loc)}
-                className={`px-2 py-1 text-xs font-bold rounded-xl border transition cursor-pointer shrink-0 ${
-                  selectedLocationFilter === loc
-                    ? 'bg-zinc-100 text-zinc-950 font-black border-zinc-300'
-                    : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:bg-zinc-800'
+                onClick={() => setGondolaFilter(g)}
+                className={`px-2.5 py-1 text-xs font-mono font-bold rounded-xl border transition cursor-pointer shrink-0 ${
+                  gondolaFilter === g
+                    ? 'bg-emerald-400 text-zinc-950 font-black border-emerald-300 shadow-sm'
+                    : 'bg-zinc-950 text-zinc-300 border-zinc-800 hover:bg-zinc-800'
                 }`}
               >
-                📍 {loc}
+                {g}
+              </button>
+            ))}
+          </div>
+
+          {/* Row 3: Filter by Tramo */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-0.5">
+            <span className="text-[11px] font-bold text-zinc-400 uppercase shrink-0 flex items-center gap-1">
+              <Layers className="w-3.5 h-3.5 text-blue-400" /> Tramo:
+            </span>
+            <button
+              type="button"
+              onClick={() => setTramoFilter('ALL')}
+              className={`px-2.5 py-0.5 text-xs font-bold rounded-xl border transition cursor-pointer shrink-0 ${
+                tramoFilter === 'ALL'
+                  ? 'bg-zinc-100 text-zinc-950 font-black border-zinc-300'
+                  : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:bg-zinc-800'
+              }`}
+            >
+              Todos
+            </button>
+            {['1', '2', '3', '4', '5', '6'].map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTramoFilter(t)}
+                className={`px-2.5 py-0.5 text-xs font-mono font-bold rounded-xl border transition cursor-pointer shrink-0 ${
+                  tramoFilter === t
+                    ? 'bg-blue-400 text-zinc-950 font-black border-blue-300 shadow-sm'
+                    : 'bg-zinc-950 text-zinc-300 border-zinc-800 hover:bg-zinc-800'
+                }`}
+              >
+                Tramo {t}
               </button>
             ))}
           </div>

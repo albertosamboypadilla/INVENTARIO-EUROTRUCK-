@@ -28,6 +28,7 @@ import { ExcelImportModal } from './components/ExcelImportModal';
 import { ProductModal } from './components/ProductModal';
 import { SecurityPinModal } from './components/SecurityPinModal';
 import { PhotoDetailModal } from './components/PhotoDetailModal';
+import { MobileBottomNav } from './components/MobileBottomNav';
 
 import { CheckCircle2, AlertTriangle, Info, RefreshCw } from 'lucide-react';
 
@@ -264,7 +265,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 pb-28 md:pb-8">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400 space-y-3">
             <RefreshCw className="w-8 h-8 animate-spin text-emerald-500" />
@@ -359,9 +360,16 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-slate-950 border-t border-slate-900 py-4 text-center text-xs text-slate-500 print:hidden">
+      <footer className="bg-slate-950 border-t border-slate-900 py-4 mb-16 md:mb-0 text-center text-xs text-slate-500 print:hidden">
         <p>EUROTRUCK SRL • Sistema de Inventario Ultra Sencillo PWA</p>
       </footer>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        pendingAuditsCount={products.filter((p) => !p.isAudited).length}
+      />
 
       {/* Add / Edit Product Modal */}
       <ProductModal

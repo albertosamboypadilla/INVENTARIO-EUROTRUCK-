@@ -31,8 +31,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           onClick={() => setActiveTab('inventory')}
           className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl transition-all duration-150 relative cursor-pointer active:scale-95 ${
             activeTab === 'inventory'
-              ? 'bg-emerald-500 text-zinc-950 font-black shadow-lg shadow-emerald-500/20'
-              : 'text-zinc-400 hover:text-emerald-300'
+              ? 'bg-red-600 text-white font-black shadow-lg shadow-red-600/30 border border-red-500'
+              : 'text-zinc-400 hover:text-white'
           }`}
         >
           <div className="relative">
@@ -43,7 +43,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               </span>
             )}
           </div>
-          <span className="text-[10px] tracking-tight mt-0.5 leading-none">
+          <span className="text-[10px] tracking-tight mt-0.5 leading-none font-bold">
             Conteo
           </span>
         </button>
@@ -54,12 +54,12 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           onClick={() => setActiveTab('scanner')}
           className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl transition-all duration-150 relative cursor-pointer active:scale-95 ${
             activeTab === 'scanner'
-              ? 'bg-zinc-100 text-zinc-950 font-black shadow-md'
+              ? 'bg-red-600 text-white font-black shadow-lg shadow-red-600/30 border border-red-500'
               : 'text-zinc-400 hover:text-zinc-200'
           }`}
         >
           <Camera className={`w-5 h-5 ${activeTab === 'scanner' ? 'stroke-[2.5]' : 'stroke-2'}`} />
-          <span className="text-[10px] tracking-tight mt-0.5 leading-none">
+          <span className="text-[10px] tracking-tight mt-0.5 leading-none font-bold">
             Cámara
           </span>
         </button>
@@ -70,12 +70,12 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           onClick={() => setActiveTab('products')}
           className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl transition-all duration-150 relative cursor-pointer active:scale-95 ${
             activeTab === 'products'
-              ? 'bg-zinc-100 text-zinc-950 font-black shadow-md'
+              ? 'bg-red-600 text-white font-black shadow-lg shadow-red-600/30 border border-red-500'
               : 'text-zinc-400 hover:text-zinc-200'
           }`}
         >
           <Package className={`w-5 h-5 ${activeTab === 'products' ? 'stroke-[2.5]' : 'stroke-2'}`} />
-          <span className="text-[10px] tracking-tight mt-0.5 leading-none">
+          <span className="text-[10px] tracking-tight mt-0.5 leading-none font-bold">
             Repuestos
           </span>
         </button>
@@ -86,12 +86,12 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           onClick={() => setActiveTab('gondolas')}
           className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl transition-all duration-150 relative cursor-pointer active:scale-95 ${
             activeTab === 'gondolas'
-              ? 'bg-zinc-100 text-zinc-950 font-black shadow-md'
+              ? 'bg-red-600 text-white font-black shadow-lg shadow-red-600/30 border border-red-500'
               : 'text-zinc-400 hover:text-zinc-200'
           }`}
         >
           <Grid className={`w-5 h-5 ${activeTab === 'gondolas' ? 'stroke-[2.5]' : 'stroke-2'}`} />
-          <span className="text-[10px] tracking-tight mt-0.5 leading-none">
+          <span className="text-[10px] tracking-tight mt-0.5 leading-none font-bold">
             Góndolas
           </span>
         </button>
@@ -102,12 +102,12 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           onClick={() => setActiveTab('dashboard')}
           className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl transition-all duration-150 relative cursor-pointer active:scale-95 ${
             activeTab === 'dashboard'
-              ? 'bg-zinc-100 text-zinc-950 font-black shadow-md'
+              ? 'bg-red-600 text-white font-black shadow-lg shadow-red-600/30 border border-red-500'
               : 'text-zinc-400 hover:text-zinc-200'
           }`}
         >
           <LayoutDashboard className={`w-5 h-5 ${activeTab === 'dashboard' ? 'stroke-[2.5]' : 'stroke-2'}`} />
-          <span className="text-[10px] tracking-tight mt-0.5 leading-none">
+          <span className="text-[10px] tracking-tight mt-0.5 leading-none font-bold">
             Resumen
           </span>
         </button>

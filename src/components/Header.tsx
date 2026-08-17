@@ -119,7 +119,7 @@ export const Header: React.FC<HeaderProps> = ({
           {activeTab !== 'dashboard' && (
             <button
               onClick={() => setActiveTab('dashboard')}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-black rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition active:scale-95 shrink-0 shadow-sm cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-black rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-700 transition active:scale-95 shrink-0 shadow-sm cursor-pointer"
               title="Volver al Menú Principal / Resumen"
             >
               <ArrowLeft className="w-4 h-4 text-zinc-300" />
@@ -129,10 +129,10 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={() => setActiveTab('dashboard')}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold rounded-xl whitespace-nowrap transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold rounded-xl whitespace-nowrap transition-all duration-150 cursor-pointer ${
               activeTab === 'dashboard'
-                ? 'bg-zinc-100 text-zinc-950 font-black shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 border border-transparent'
+                ? 'bg-red-600 text-white font-black shadow-md shadow-red-600/30 border border-red-500'
+                : 'text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent'
             }`}
           >
             <LayoutDashboard className="w-4 h-4" />
@@ -141,16 +141,16 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={() => setActiveTab('products')}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold rounded-xl whitespace-nowrap transition-colors relative cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold rounded-xl whitespace-nowrap transition-all duration-150 relative cursor-pointer ${
               activeTab === 'products'
-                ? 'bg-zinc-100 text-zinc-950 font-black shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 border border-transparent'
+                ? 'bg-red-600 text-white font-black shadow-md shadow-red-600/30 border border-red-500'
+                : 'text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent'
             }`}
           >
             <Package className="w-4 h-4" />
             <span>Repuestos & Stock</span>
             {lowStockCount > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 text-[10px] font-black rounded-full bg-rose-600 text-white shadow animate-pulse">
+              <span className="ml-1 px-1.5 py-0.5 text-[10px] font-black rounded-full bg-zinc-950 text-white border border-red-300 shadow">
                 {lowStockCount}
               </span>
             )}
@@ -159,22 +159,22 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Dedicated Inventory Audit Review Window Button */}
           <button
             onClick={() => setActiveTab('inventory')}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold rounded-xl whitespace-nowrap transition-colors relative cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold rounded-xl whitespace-nowrap transition-all duration-150 relative cursor-pointer ${
               activeTab === 'inventory'
-                ? 'bg-zinc-100 text-zinc-950 font-black shadow-sm'
-                : 'text-zinc-300 bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-700'
+                ? 'bg-red-600 text-white font-black shadow-md shadow-red-600/30 border border-red-500'
+                : 'text-zinc-300 bg-zinc-900/90 hover:bg-zinc-800 hover:text-white border border-zinc-700'
             }`}
           >
-            <CheckCircle2 className="w-4 h-4 text-zinc-400" />
+            <CheckCircle2 className={`w-4 h-4 ${activeTab === 'inventory' ? 'text-white' : 'text-zinc-400'}`} />
             <span>Conteo & Revisión</span>
           </button>
 
           <button
             onClick={() => setActiveTab('gondolas')}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold rounded-xl whitespace-nowrap transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold rounded-xl whitespace-nowrap transition-all duration-150 cursor-pointer ${
               activeTab === 'gondolas'
-                ? 'bg-zinc-100 text-zinc-950 font-black shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 border border-transparent'
+                ? 'bg-red-600 text-white font-black shadow-md shadow-red-600/30 border border-red-500'
+                : 'text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent'
             }`}
           >
             <Grid className="w-4 h-4" />
@@ -183,10 +183,10 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={() => setActiveTab('scanner')}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold rounded-xl whitespace-nowrap transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold rounded-xl whitespace-nowrap transition-all duration-150 cursor-pointer ${
               activeTab === 'scanner'
-                ? 'bg-zinc-100 text-zinc-950 font-black shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 border border-transparent'
+                ? 'bg-red-600 text-white font-black shadow-md shadow-red-600/30 border border-red-500'
+                : 'text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent'
             }`}
           >
             <QrCode className="w-4 h-4" />
@@ -195,10 +195,10 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={() => setActiveTab('thermal')}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold rounded-xl whitespace-nowrap transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold rounded-xl whitespace-nowrap transition-all duration-150 cursor-pointer ${
               activeTab === 'thermal'
-                ? 'bg-zinc-100 text-zinc-950 font-black shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 border border-transparent'
+                ? 'bg-red-600 text-white font-black shadow-md shadow-red-600/30 border border-red-500'
+                : 'text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent'
             }`}
           >
             <Printer className="w-4 h-4" />
@@ -207,10 +207,10 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={() => setActiveTab('movements')}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold rounded-xl whitespace-nowrap transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold rounded-xl whitespace-nowrap transition-all duration-150 cursor-pointer ${
               activeTab === 'movements'
-                ? 'bg-zinc-100 text-zinc-950 font-black shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 border border-transparent'
+                ? 'bg-red-600 text-white font-black shadow-md shadow-red-600/30 border border-red-500'
+                : 'text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent'
             }`}
           >
             <History className="w-4 h-4" />

@@ -672,6 +672,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <h4 className="font-black text-white text-sm sm:text-base leading-tight truncate hover:text-zinc-300 transition">
                           {p.name}
                         </h4>
+                        {p.isAudited && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-950 text-emerald-300 border border-emerald-600 shadow-sm" title={`Auditado por ${p.auditedBy || 'Operador'} el ${p.auditedAt ? new Date(p.auditedAt).toLocaleString() : ''}`}>
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                            <span>CONTADO</span>
+                          </span>
+                        )}
                         <span className="text-[11px] font-mono font-bold text-zinc-300 bg-zinc-900 px-2 py-0.5 rounded-md border border-zinc-700 shadow-sm flex items-center gap-1">
                           <MapPin className="w-3 h-3 text-zinc-400 shrink-0" />
                           <span>UBICACIÓN: {p.locationCode || p.estante || '1b1'}</span>

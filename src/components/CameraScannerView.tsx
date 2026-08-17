@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { Product, Location, MovementType } from '../types';
+import { recordProductAuditDoc } from '../services/wmsService';
 import {
   Camera,
   CameraOff,
@@ -56,6 +57,7 @@ export const CameraScannerView: React.FC<CameraScannerViewProps> = ({
   const [actionNotes, setActionNotes] = useState<string>('');
   const [audioFeedback, setAudioFeedback] = useState<boolean>(true);
   const [processing, setProcessing] = useState<boolean>(false);
+  const [auditCountInput, setAuditCountInput] = useState<number>(0);
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
@@ -99,6 +101,7 @@ export const CameraScannerView: React.FC<CameraScannerViewProps> = ({
       setSelectedProduct(match);
       setTargetLocationCode(match.locationCode);
       setQuantityInput(1);
+      setAuditCountInput(match.currentStock);
     } else {
       setSelectedProduct(null);
       setErrorMessage(`No se encontró ningún producto con el código: "${cleanCode}"`);
@@ -226,6 +229,31 @@ export const CameraScannerView: React.FC<CameraScannerViewProps> = ({
       });
     } else {
       doExecuteMovement();
+    }
+  };
+
+  const handleConfirmAudit = async () => {
+    if (!selectedProduct) return;
+    setProcessing(true);
+    setErrorMessage('');
+    setSuccessMessage('');
+    try {
+      await recordProductAuditDoc({
+        productId: selectedProduct.id,
+        count: auditCountInput,
+        locationCode: selectedProduct.locationCode,
+        operatorName: operatorName || 'Operador Móvil',
+        previousStock: selectedProduct.currentStock,
+        productName: selectedProduct.name,
+        barcode: selectedProduct.barcode,
+      });
+      setSuccessMessage(
+        `✅ ¡Conteo guardado en la nube! "${selectedProduct.name}" ahora tiene ${auditCountInput} unidades y está marcado en VERDE en todos los dispositivos.`
+      );
+    } catch (err: any) {
+      setErrorMessage(`Error guardando conteo: ${err.message || String(err)}`);
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -450,13 +478,19 @@ export const CameraScannerView: React.FC<CameraScannerViewProps> = ({
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl text-slate-100">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-4 border-b border-slate-800">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30">
                       SKU: {selectedProduct.sku}
                     </span>
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-800 text-slate-300 font-mono border border-slate-700">
                       EAN: {selectedProduct.barcode}
                     </span>
+                    {selectedProduct.isAudited && (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-950 text-emerald-300 border border-emerald-500 flex items-center gap-1 shadow-sm">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>✅ CONTADO EN VERDE</span>
+                      </span>
+                    )}
                   </div>
                   <h3 className="text-lg font-bold text-white">{selectedProduct.name}</h3>
                   <p className="text-xs text-slate-400 mt-0.5">Categoría: {selectedProduct.category}</p>
@@ -608,8 +642,66 @@ export const CameraScannerView: React.FC<CameraScannerViewProps> = ({
                   </button>
                 </div>
               ) : (
-                <div className="mt-3 p-3 bg-blue-950/40 border border-blue-800/40 rounded-xl text-blue-200 text-xs">
-                  💡 <strong>Modo Consulta Activo:</strong> Selecciona "Recepción", "Despacho" o "Reubicar" en la parte superior si deseas modificar el stock de este producto.
+                <div className="mt-4 pt-4 border-t border-slate-800 space-y-3">
+                  <div className="bg-emerald-950/40 border border-emerald-800/60 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                        <h4 className="font-bold text-white text-sm">
+                          Conteo Físico Rápido (Guardar & Poner en Verde)
+                        </h4>
+                      </div>
+                      {selectedProduct.isAudited && (
+                        <span className="text-[10px] font-black text-emerald-300 bg-emerald-900/80 px-2 py-0.5 rounded-md border border-emerald-600">
+                          YA CONTADO
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-slate-300">
+                      Modifica la cantidad contada y presiona el botón. Se guardará en la nube y se reflejará en verde en todas las computadoras y teléfonos.
+                    </p>
+
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-700">
+                        <button
+                          type="button"
+                          onClick={() => setAuditCountInput(Math.max(0, auditCountInput - 1))}
+                          className="w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-base flex items-center justify-center cursor-pointer"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min="0"
+                          value={auditCountInput}
+                          onChange={(e) => setAuditCountInput(Math.max(0, parseInt(e.target.value) || 0))}
+                          className="w-20 bg-slate-950 border border-slate-700 text-white rounded-lg px-2 py-1.5 text-center text-base font-black focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setAuditCountInput(auditCountInput + 1)}
+                          className="w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-base flex items-center justify-center cursor-pointer"
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={processing}
+                        onClick={handleConfirmAudit}
+                        className="flex-1 py-2.5 px-4 rounded-xl font-black text-xs text-zinc-950 bg-emerald-400 hover:bg-emerald-300 transition shadow-md shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                      >
+                        <CheckCircle2 className="w-4 h-4 text-zinc-950" />
+                        <span>{processing ? 'Sincronizando...' : 'Guardar Conteo en Verde'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-800/60 border border-slate-700 rounded-xl text-slate-300 text-xs">
+                    💡 <strong>Otras Operaciones:</strong> Selecciona "Recepción", "Despacho" o "Reubicar" en la parte superior si deseas registrar entradas/salidas con movimiento de Kardex.
+                  </div>
                 </div>
               )}
             </div>

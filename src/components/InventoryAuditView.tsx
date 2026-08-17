@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Product, ProductUnit, Location } from '../types';
 import { generateNonRepeatingBarcode } from '../utils/barcode';
+import { recordProductAuditDoc, resetAllProductAuditsDoc } from '../services/wmsService';
 import {
   CheckCircle2,
   Barcode,
@@ -24,7 +25,9 @@ import {
   Check,
   Compass,
   Zap,
-  Clock
+  Clock,
+  Radio,
+  User
 } from 'lucide-react';
 
 interface InventoryAuditViewProps {
@@ -60,6 +63,9 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
   // Active form data
   const [countQuantity, setCountQuantity] = useState<number>(1);
   const [locationCode, setLocationCode] = useState<string>('1b1');
+  const [operatorName, setOperatorName] = useState<string>(() => {
+    return localStorage.getItem('eurotruck_operator_name') || 'Operador Eurotruck';
+  });
   const [newName, setNewName] = useState<string>('');
   const [newBarcode, setNewBarcode] = useState<string>('');
   const [newPriceCost, setNewPriceCost] = useState<number>(0);
@@ -70,52 +76,24 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
 
   // Status & notifications
   const [saving, setSaving] = useState<boolean>(false);
+  const [resetting, setResetting] = useState<boolean>(false);
   const [flashSuccess, setFlashSuccess] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string>('');
 
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const countInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Reviewed IDs stored locally
-  const [reviewedProductIds, setReviewedProductIds] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('eurotruck_reviewed_product_ids');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  // Track location audit history to inform operator if item was already counted in another gondola
-  const [itemLocationHistory, setItemLocationHistory] = useState<Record<string, { location: string; count: number; timestamp: string }>>(() => {
-    try {
-      const saved = localStorage.getItem('eurotruck_item_loc_history');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
-
+  // Save operator name locally for convenience
   useEffect(() => {
     try {
-      localStorage.setItem('eurotruck_reviewed_product_ids', JSON.stringify(reviewedProductIds));
-    } catch (e) {
-      console.warn('Could not save reviewed IDs:', e);
-    }
-  }, [reviewedProductIds]);
+      localStorage.setItem('eurotruck_operator_name', operatorName);
+    } catch {}
+  }, [operatorName]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem('eurotruck_item_loc_history', JSON.stringify(itemLocationHistory));
-    } catch (e) {
-      console.warn('Could not save location history:', e);
-    }
-  }, [itemLocationHistory]);
-
-  // Active product object
+  // Active product object from real-time products prop
   const activeProduct = products.find((p) => p.id === selectedProductId) || null;
 
-  // Auto-fill active product when selected
+  // Auto-fill active product when selected or when updated from Firestore
   useEffect(() => {
     if (activeProduct && !isCreatingNew) {
       setCountQuantity(activeProduct.currentStock ?? 1);
@@ -130,13 +108,13 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
     }
   }, [activeProduct, isCreatingNew]);
 
-  // Initial selection
+  // Initial selection: first unreviewed (not audited) product
   useEffect(() => {
     if (!selectedProductId && !isCreatingNew && products.length > 0) {
-      const firstUnreviewed = products.find((p) => !reviewedProductIds.includes(p.id)) || products[0];
+      const firstUnreviewed = products.find((p) => !p.isAudited) || products[0];
       setSelectedProductId(firstUnreviewed.id);
     }
-  }, [products, selectedProductId, isCreatingNew, reviewedProductIds]);
+  }, [products, selectedProductId, isCreatingNew]);
 
   // Quick gondolas list
   const quickLocations = ['1b1', '1b2', '1b3', '1b4', '1C1', '1C2', '2A1', '2A2', '3A1', '3A2'];
@@ -153,31 +131,34 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
     if (!match) {
       match = products.find((p) => p.name.toLowerCase() === query || p.sku.toLowerCase() === query);
     }
-    // 3. Partial barcode or name match
+    // 3. Partial barcode or name or OEM match
     if (!match) {
       match = products.find(
-        (p) => p.barcode.toLowerCase().includes(query) || p.name.toLowerCase().includes(query) || (p.referenceOEM && p.referenceOEM.toLowerCase().includes(query))
+        (p) =>
+          p.barcode.toLowerCase().includes(query) ||
+          p.name.toLowerCase().includes(query) ||
+          (p.referenceOEM && p.referenceOEM.toLowerCase().includes(query))
       );
     }
 
     if (match) {
       setSelectedProductId(match.id);
       setIsCreatingNew(false);
-      setFlashSuccess(`🎯 Repuesto encontrado: "${match.name}"`);
+      setFlashSuccess(`🎯 Encontrado: "${match.name}" (COD: ${match.barcode})`);
       setTimeout(() => setFlashSuccess(null), 2500);
       if (countInputRef.current) {
         countInputRef.current.focus();
         countInputRef.current.select();
       }
     } else {
-      // Create new prompt
+      // Prompt for new product
       setIsCreatingNew(true);
       setSelectedProductId('');
       setNewName(searchTerm.trim());
       setNewBarcode(generateNonRepeatingBarcode());
       setCountQuantity(1);
       setLocationCode(selectedLocationFilter !== 'ALL' ? selectedLocationFilter : '1b1');
-      setFlashSuccess(`➕ No existe "${searchTerm}". Listo para registrar.`);
+      setFlashSuccess(`➕ No existe "${searchTerm}". Listo para registrarlo.`);
       setTimeout(() => setFlashSuccess(null), 3000);
     }
   };
@@ -198,7 +179,7 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
     if (searchInputRef.current) searchInputRef.current.focus();
   };
 
-  // Direct Save and Turn Green
+  // Direct Save to Firestore and Turn Green across ALL devices
   const handleConfirmCount = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setValidationError('');
@@ -209,15 +190,19 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
       return;
     }
 
-    const finalBarcode = (isCreatingNew ? newBarcode : (activeProduct?.barcode || newBarcode)).trim() || generateNonRepeatingBarcode();
+    const finalBarcode =
+      (isCreatingNew ? newBarcode : (activeProduct?.barcode || newBarcode)).trim() ||
+      generateNonRepeatingBarcode();
     const finalLocation = locationCode.trim() || '1b1';
     const finalCount = Math.max(0, countQuantity);
+    const nowIso = new Date().toISOString();
 
     setSaving(true);
     try {
       let savedId = selectedProductId;
 
       if (isCreatingNew || !savedId) {
+        // Create new in Firestore
         savedId = await onAddProduct({
           name: targetName,
           partBrand: newBrand.trim(),
@@ -233,7 +218,7 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
           warehouseCode: '01',
           estante: finalLocation,
           tramo: '01',
-          counterName: 'Operador Eurotruck',
+          counterName: operatorName.trim() || 'Operador Eurotruck',
           locationCode: finalLocation,
           priceCost: newPriceCost,
           priceSale: newPriceSale,
@@ -242,45 +227,58 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
           imageUrl: '',
           notes: '',
         });
+
+        // Set as audited in Firestore
+        await recordProductAuditDoc({
+          productId: savedId,
+          count: finalCount,
+          locationCode: finalLocation,
+          operatorName: operatorName.trim() || 'Operador Eurotruck',
+          previousStock: 0,
+          productName: targetName,
+          barcode: finalBarcode,
+        });
+
         setIsCreatingNew(false);
       } else {
-        await onUpdateProduct(savedId, {
-          currentStock: finalCount,
+        // Update and mark audited directly in Firestore
+        await recordProductAuditDoc({
+          productId: savedId,
+          count: finalCount,
           locationCode: finalLocation,
-          name: targetName,
+          operatorName: operatorName.trim() || 'Operador Eurotruck',
+          previousStock: activeProduct?.currentStock ?? 0,
+          productName: targetName,
           barcode: finalBarcode,
-          ...(newPriceCost > 0 ? { priceCost: newPriceCost } : {}),
-          ...(newPriceSale > 0 ? { priceSale: newPriceSale } : {}),
-          ...(newBrand ? { partBrand: newBrand } : {}),
-          ...(newOem ? { referenceOEM: newOem } : {}),
+          additionalUpdates: {
+            name: targetName,
+            barcode: finalBarcode,
+            ...(newPriceCost > 0 ? { priceCost: newPriceCost } : {}),
+            ...(newPriceSale > 0 ? { priceSale: newPriceSale } : {}),
+            ...(newBrand ? { partBrand: newBrand } : {}),
+            ...(newOem ? { referenceOEM: newOem } : {}),
+          },
         });
       }
 
-      // Mark in GREEN
-      if (!reviewedProductIds.includes(savedId)) {
-        setReviewedProductIds((prev) => [savedId, ...prev]);
-      }
-
-      // Record location audit history
-      const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      setItemLocationHistory((prev) => ({
-        ...prev,
-        [finalBarcode]: { location: finalLocation, count: finalCount, timestamp: nowStr },
-      }));
-
       // Flash Success Banner
-      setFlashSuccess(`✅ ¡"${targetName}" marcado en VERDE con ${finalCount} unidades en Góndola ${finalLocation}!`);
+      setFlashSuccess(
+        `✅ ¡"${targetName}" guardado en la NUBE con ${finalCount} unidades en Góndola ${finalLocation} (PUESTO EN VERDE PARA TODOS)!`
+      );
       setTimeout(() => setFlashSuccess(null), 3500);
 
       // Auto Advance to Next Unreviewed item
       const nextPending = products.filter(
-        (p) => p.id !== savedId && !reviewedProductIds.includes(p.id) && (selectedLocationFilter === 'ALL' || p.locationCode === selectedLocationFilter)
+        (p) =>
+          p.id !== savedId &&
+          !p.isAudited &&
+          (selectedLocationFilter === 'ALL' || p.locationCode === selectedLocationFilter)
       );
 
       if (nextPending.length > 0) {
         setSelectedProductId(nextPending[0].id);
       } else {
-        const anyPending = products.filter((p) => p.id !== savedId && !reviewedProductIds.includes(p.id));
+        const anyPending = products.filter((p) => p.id !== savedId && !p.isAudited);
         if (anyPending.length > 0) {
           setSelectedProductId(anyPending[0].id);
         }
@@ -292,37 +290,56 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
       }
     } catch (err) {
       console.error('Error saving count:', err);
-      setValidationError('Error al guardar el conteo del inventario.');
+      setValidationError('Error al guardar el conteo en Firebase Firestore.');
     } finally {
       setSaving(false);
     }
   };
 
-  // Quick instant stock adjustment from list
+  // Quick instant stock adjustment from list (Syncs in Firestore and sets green)
   const handleQuickRowStock = async (product: Product, newStock: number) => {
     try {
       const stock = Math.max(0, newStock);
-      await onUpdateProduct(product.id, { currentStock: stock });
-      if (!reviewedProductIds.includes(product.id)) {
-        setReviewedProductIds((prev) => [product.id, ...prev]);
-      }
-      setFlashSuccess(`✅ "${product.name}" actualizado a ${stock} u. y puesto en VERDE.`);
+      await recordProductAuditDoc({
+        productId: product.id,
+        count: stock,
+        locationCode: product.locationCode || '1b1',
+        operatorName: operatorName.trim() || 'Operador Eurotruck',
+        previousStock: product.currentStock,
+        productName: product.name,
+        barcode: product.barcode,
+      });
+
+      setFlashSuccess(`✅ "${product.name}" actualizado a ${stock} u. y sincronizado en VERDE.`);
       setTimeout(() => setFlashSuccess(null), 2500);
     } catch (e) {
-      console.error(e);
+      console.error('Error in quick row count:', e);
     }
   };
 
-  const handleClearReviewed = () => {
-    if (confirm('¿Deseas reiniciar todos los artículos en verde para comenzar un nuevo conteo desde cero?')) {
-      setReviewedProductIds([]);
-      setItemLocationHistory({});
+  // Reset all audited status across all devices
+  const handleClearReviewed = async () => {
+    if (
+      confirm(
+        '¿Deseas REINICIAR el conteo físico para todos los dispositivos? Todos los artículos volverán al estado pendiente en tiempo real.'
+      )
+    ) {
+      setResetting(true);
+      try {
+        await resetAllProductAuditsDoc(products);
+        setFlashSuccess('🔄 Conteo reiniciado con éxito en todos los dispositivos.');
+        setTimeout(() => setFlashSuccess(null), 3000);
+      } catch (err) {
+        console.error('Error resetting audits:', err);
+      } finally {
+        setResetting(false);
+      }
     }
   };
 
   // Filtered Products for List
   const filteredProducts = products.filter((p) => {
-    const isRev = reviewedProductIds.includes(p.id);
+    const isRev = !!p.isAudited;
     if (listTab === 'REVIEWED' && !isRev) return false;
     if (listTab === 'PENDING' && isRev) return false;
 
@@ -340,17 +357,17 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
     return true;
   });
 
+  // Calculations from real-time database
   const totalCount = products.length;
-  const totalReviewed = products.filter((p) => reviewedProductIds.includes(p.id)).length;
+  const totalReviewed = products.filter((p) => !!p.isAudited).length;
   const totalPending = totalCount - totalReviewed;
   const progressPercent = totalCount > 0 ? Math.round((totalReviewed / totalCount) * 100) : 0;
 
-  const currentItemBarcode = isCreatingNew ? newBarcode : (activeProduct?.barcode || '');
-  const previousAuditForThisItem = currentItemBarcode ? itemLocationHistory[currentItemBarcode] : null;
+  const isCurrentActiveAudited = activeProduct?.isAudited === true;
 
   return (
     <div className="space-y-4 animate-fadeIn pb-14">
-      {/* 🟢 TOP HEADER BAR */}
+      {/* 🟢 TOP HEADER BAR CON NUBE MULTIDISPOSITIVO */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-4 sm:p-5 shadow-xl text-zinc-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           {onBackToDashboard && (
@@ -360,7 +377,7 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
               title="Volver al Menú Principal"
             >
               <ArrowLeft className="w-4 h-4 text-zinc-300" />
-              <span>← Menú Principal</span>
+              <span>← Menú</span>
             </button>
           )}
 
@@ -369,53 +386,71 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-base sm:text-xl font-black text-white leading-tight flex items-center gap-2">
-                <span>Conteo e Inventario Rápido</span>
-                <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-emerald-950 text-emerald-300 border border-emerald-800 uppercase">
-                  Paso 1-2-3
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base sm:text-xl font-black text-white leading-tight">
+                  Conteo e Inventario Rápido
+                </h2>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>Sincronización en la Nube (Firestore)</span>
                 </span>
-              </h2>
+              </div>
               <p className="text-xs text-zinc-400 mt-0.5">
-                Escanea o busca el repuesto, escribe cuántos hay y listo: <strong className="text-emerald-400">se pone en verde de inmediato</strong>.
+                Al escanear y guardar la cantidad, el repuesto <strong className="text-emerald-400">se pone en verde de inmediato en todos los celulares y computadoras</strong>.
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {/* Operator Name Input */}
+          <div className="flex items-center gap-1.5 bg-zinc-950 px-2.5 py-1.5 rounded-xl border border-zinc-800">
+            <User className="w-3.5 h-3.5 text-zinc-400" />
+            <input
+              type="text"
+              value={operatorName}
+              onChange={(e) => setOperatorName(e.target.value)}
+              placeholder="Nombre Operador"
+              className="bg-transparent text-xs font-bold text-zinc-200 focus:outline-none w-28 sm:w-36"
+              title="Nombre del operador que firma el conteo"
+            />
+          </div>
+
           <button
             onClick={handleStartNew}
             className="px-3.5 py-2 bg-zinc-100 hover:bg-white text-zinc-950 font-black text-xs rounded-xl shadow-md border border-zinc-300 active:scale-95 transition flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
-            <span>+ Registrar Nuevo</span>
+            <span>+ Nuevo</span>
           </button>
 
-          {reviewedProductIds.length > 0 && (
+          {totalReviewed > 0 && (
             <button
               onClick={handleClearReviewed}
-              className="px-3 py-2 bg-zinc-950 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 font-bold text-xs rounded-xl active:scale-95 transition flex items-center gap-1 cursor-pointer"
-              title="Reiniciar lista en verde"
+              disabled={resetting}
+              className="px-3 py-2 bg-zinc-950 hover:bg-zinc-800 disabled:opacity-50 text-zinc-400 hover:text-white border border-zinc-800 font-bold text-xs rounded-xl active:scale-95 transition flex items-center gap-1 cursor-pointer"
+              title="Reiniciar lista en verde en todos los dispositivos"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reiniciar</span>
+              <RotateCcw className={`w-3.5 h-3.5 ${resetting ? 'animate-spin' : ''}`} />
+              <span>{resetting ? 'Reiniciando...' : 'Reiniciar Conteo'}</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* 📊 PROGRESS BAR (COMPLETED IN GREEN) */}
+      {/* 📊 PROGRESS BAR (COMPLETED IN GREEN ACROSS ALL APPS) */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-3.5 sm:p-4 shadow-md">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-bold mb-2">
           <span className="text-zinc-300 flex items-center gap-1.5">
             <Layers className="w-4 h-4 text-emerald-400" />
-            Progreso del Conteo Físico:
+            Progreso Global del Conteo (En Tiempo Real):
           </span>
           <div className="flex items-center gap-3 text-zinc-400 flex-wrap">
-            <span>Total: <strong className="text-white font-mono">{totalCount}</strong></span>
+            <span>Total Catálogo: <strong className="text-white font-mono">{totalCount}</strong></span>
             <span>Pendientes: <strong className="text-amber-400 font-mono">{totalPending}</strong></span>
-            <span className="text-emerald-400 font-black">
-              ✅ Contados (En Verde): <strong className="font-mono">{totalReviewed} ({progressPercent}%)</strong>
+            <span className="text-emerald-400 font-black flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Contados en Verde: <strong className="font-mono text-emerald-300">{totalReviewed} ({progressPercent}%)</strong>
             </span>
           </div>
         </div>
@@ -435,7 +470,7 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
         </div>
       )}
 
-      {/* 🔍 PASO 1: BARRA DE BÚSQUEDA / ESCANEO GIGANTE */}
+      {/* 🔍 PASO 1: BARRA DE BÚSQUEDA / ESCANEO */}
       <div className="bg-zinc-900 border-2 border-zinc-700/80 rounded-3xl p-4 shadow-xl space-y-3">
         <div className="flex items-center justify-between">
           <label className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
@@ -492,11 +527,13 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
       </div>
 
       {/* 📦 PASO 2 Y 3: TARJETA PRINCIPAL DE CONTEO Y CONFIRMACIÓN */}
-      <div className={`bg-zinc-900 border-2 rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4 transition ${
-        reviewedProductIds.includes(selectedProductId)
-          ? 'border-emerald-600/90 shadow-emerald-950/30'
-          : 'border-zinc-700'
-      }`}>
+      <div
+        className={`bg-zinc-900 border-2 rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4 transition ${
+          isCurrentActiveAudited
+            ? 'border-emerald-500 shadow-emerald-950/40 bg-gradient-to-b from-zinc-900 to-emerald-950/20'
+            : 'border-zinc-700'
+        }`}
+      >
         {/* Header of Active Item */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-800">
           <div className="flex items-center gap-3">
@@ -530,33 +567,25 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
             </div>
           </div>
 
-          {/* Green Status Badge */}
-          {selectedProductId && reviewedProductIds.includes(selectedProductId) && (
-            <span className="px-3.5 py-1.5 bg-emerald-950 text-emerald-300 border-2 border-emerald-500 rounded-2xl text-xs font-black flex items-center gap-1.5 shadow-sm self-start sm:self-center">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 stroke-[3]" />
-              <span>✅ YA CONTADO EN VERDE</span>
+          {/* Green Status Badge synced from Firestore */}
+          {isCurrentActiveAudited ? (
+            <div className="flex flex-col sm:items-end gap-1">
+              <span className="px-3.5 py-1.5 bg-emerald-950 text-emerald-300 border-2 border-emerald-500 rounded-2xl text-xs font-black flex items-center gap-1.5 shadow-sm">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 stroke-[3]" />
+                <span>✅ YA CONTADO EN VERDE</span>
+              </span>
+              {activeProduct?.auditedAt && (
+                <span className="text-[10px] text-zinc-400 font-mono">
+                  {new Date(activeProduct.auditedAt).toLocaleDateString()} {new Date(activeProduct.auditedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {activeProduct.auditedBy || 'Operador'}
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="px-3 py-1 bg-amber-950/60 text-amber-300 border border-amber-800 rounded-xl text-xs font-bold self-start sm:self-center">
+              ⏳ Pendiente de Conteo
             </span>
           )}
         </div>
-
-        {/* Previous audit warning */}
-        {previousAuditForThisItem && previousAuditForThisItem.location !== locationCode && (
-          <div className="bg-amber-950/40 border border-amber-600/70 rounded-2xl p-3 text-amber-200 text-xs flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Compass className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>
-                Aviso: Este repuesto fue contado previamente en la <strong className="text-white bg-zinc-950 px-1.5 py-0.5 rounded border border-zinc-800 font-mono">Góndola {previousAuditForThisItem.location}</strong> ({previousAuditForThisItem.count} u.).
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setLocationCode(previousAuditForThisItem.location)}
-              className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-amber-300 text-xs font-bold rounded-lg border border-zinc-700 cursor-pointer shrink-0"
-            >
-              Usar {previousAuditForThisItem.location}
-            </button>
-          </div>
-        )}
 
         <form onSubmit={handleConfirmCount} className="space-y-4">
           {validationError && (
@@ -777,7 +806,7 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
               <CheckCircle2 className="w-6 h-6 stroke-[3]" />
               <span>
                 {saving
-                  ? 'GUARDANDO...'
+                  ? 'GUARDANDO EN LA NUBE...'
                   : `✅ CONFIRMAR ${countQuantity} UNIDADES Y PONER EN VERDE`}
               </span>
             </button>
@@ -869,7 +898,7 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {filteredProducts.map((p) => {
-              const isReviewed = reviewedProductIds.includes(p.id);
+              const isReviewed = !!p.isAudited;
               const isSelected = selectedProductId === p.id && !isCreatingNew;
 
               return (
@@ -877,7 +906,7 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
                   key={p.id}
                   className={`rounded-2xl p-3.5 border-2 transition flex flex-col justify-between gap-2.5 shadow-md ${
                     isReviewed
-                      ? 'bg-emerald-950/40 border-emerald-500/80'
+                      ? 'bg-emerald-950/40 border-emerald-500/80 shadow-emerald-950/20'
                       : isSelected
                       ? 'bg-zinc-950 border-zinc-300 ring-2 ring-zinc-400'
                       : 'bg-zinc-950 border-zinc-800 hover:border-zinc-700'
@@ -924,10 +953,17 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
 
                     {/* Badge */}
                     {isReviewed ? (
-                      <span className="px-2 py-0.5 bg-emerald-950 text-emerald-300 border border-emerald-500 rounded-lg text-[10px] font-black shrink-0 flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                        <span>VERDE</span>
-                      </span>
+                      <div className="flex flex-col items-end gap-0.5 shrink-0">
+                        <span className="px-2 py-0.5 bg-emerald-950 text-emerald-300 border border-emerald-500 rounded-lg text-[10px] font-black flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                          <span>EN VERDE</span>
+                        </span>
+                        {p.auditedBy && (
+                          <span className="text-[9px] text-zinc-400 font-medium">
+                            {p.auditedBy}
+                          </span>
+                        )}
+                      </div>
                     ) : (
                       <span className="px-2 py-0.5 bg-zinc-900 text-zinc-400 border border-zinc-800 rounded-lg text-[10px] font-bold shrink-0">
                         Pendiente
@@ -939,7 +975,7 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
                   <div className="flex items-center justify-between bg-zinc-900 p-2 rounded-xl border border-zinc-800">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] uppercase font-bold text-zinc-400">Stock:</span>
-                      <span className={`text-sm font-black font-mono ${isReviewed ? 'text-emerald-400' : 'text-white'}`}>
+                      <span className={`text-sm font-black font-mono ${isReviewed ? 'text-emerald-400 font-black' : 'text-white'}`}>
                         {p.currentStock} u.
                       </span>
                     </div>
@@ -949,7 +985,7 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
                         type="button"
                         onClick={() => handleQuickRowStock(p, p.currentStock - 1)}
                         className="w-7 h-7 rounded-lg bg-zinc-950 hover:bg-zinc-800 text-zinc-300 border border-zinc-700 flex items-center justify-center text-xs font-black cursor-pointer"
-                        title="Restar 1"
+                        title="Restar 1 y guardar en la nube"
                       >
                         -
                       </button>
@@ -957,7 +993,7 @@ export const InventoryAuditView: React.FC<InventoryAuditViewProps> = ({
                         type="button"
                         onClick={() => handleQuickRowStock(p, p.currentStock + 1)}
                         className="w-7 h-7 rounded-lg bg-zinc-950 hover:bg-zinc-800 text-zinc-300 border border-zinc-700 flex items-center justify-center text-xs font-black cursor-pointer"
-                        title="Sumar 1"
+                        title="Sumar 1 y guardar en la nube"
                       >
                         +
                       </button>

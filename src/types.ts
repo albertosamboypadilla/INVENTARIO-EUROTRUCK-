@@ -18,6 +18,11 @@ export interface Product {
   tramo?: string; // Tramo / Nivel (ej. 'T-02', 'N3')
   locationCode: string; // E.g., PAS-01-G02-N3-P01
   counterName?: string; // Contador / Audit
+  isAudited?: boolean; // Estado de Conteo Físico Real-Time en la Nube
+  auditedAt?: string; // Fecha y Hora del último conteo
+  auditedBy?: string; // Nombre del operador que realizó el conteo
+  auditedCount?: number; // Cantidad física contada
+  auditedLocation?: string; // Góndola donde fue contado
   priceCost: number; // Costo
   priceSale: number; // Precio
   photoFront?: string; // Foto 1 - Vista Frontal (base64 o URL)

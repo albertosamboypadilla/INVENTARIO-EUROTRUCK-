@@ -58,7 +58,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
-  const [stockFilter, setStockFilter] = useState<'ALL' | 'LOW' | 'OUT'>('ALL');
+  const [stockFilter, setStockFilter] = useState<'ALL' | 'AUDITED' | 'PENDING' | 'LOW' | 'OUT'>('ALL');
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -80,7 +80,11 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
     const matchesCategory = selectedCategory === 'ALL' || p.category === selectedCategory;
 
     let matchesStock = true;
-    if (stockFilter === 'LOW') {
+    if (stockFilter === 'AUDITED') {
+      matchesStock = !!p.isAudited;
+    } else if (stockFilter === 'PENDING') {
+      matchesStock = !p.isAudited;
+    } else if (stockFilter === 'LOW') {
       matchesStock = p.currentStock > 0 && p.currentStock <= p.minStock;
     } else if (stockFilter === 'OUT') {
       matchesStock = p.currentStock <= 0;
@@ -261,13 +265,14 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
             </select>
           </div>
 
-          {/* Stock Alert Filter Chips */}
-          <div className="sm:col-span-3 flex items-center gap-1">
+          {/* Stock Alert & Audit Filter Chips */}
+          <div className="sm:col-span-12 flex items-center gap-1.5 flex-wrap pt-1 border-t border-slate-800">
+            <span className="text-[11px] font-bold text-slate-400 uppercase mr-1">Filtros Rápidos:</span>
             <button
               onClick={() => setStockFilter('ALL')}
-              className={`flex-1 py-2 text-[11px] font-bold rounded-xl transition ${
+              className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition cursor-pointer ${
                 stockFilter === 'ALL'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-zinc-100 text-zinc-950 font-black shadow-sm'
                   : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
               }`}
             >
@@ -275,27 +280,49 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
             </button>
 
             <button
+              onClick={() => setStockFilter('AUDITED')}
+              className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition cursor-pointer flex items-center gap-1 ${
+                stockFilter === 'AUDITED'
+                  ? 'bg-emerald-500 text-zinc-950 font-black shadow-sm'
+                  : 'bg-emerald-950/60 text-emerald-300 hover:bg-emerald-900/60 border border-emerald-800/60'
+              }`}
+            >
+              <span>✅ Contados en Verde ({products.filter((p) => !!p.isAudited).length})</span>
+            </button>
+
+            <button
+              onClick={() => setStockFilter('PENDING')}
+              className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition cursor-pointer flex items-center gap-1 ${
+                stockFilter === 'PENDING'
+                  ? 'bg-amber-500 text-zinc-950 font-black shadow-sm'
+                  : 'bg-amber-950/60 text-amber-300 hover:bg-amber-900/60 border border-amber-800/60'
+              }`}
+            >
+              <span>⏳ Pendientes ({products.filter((p) => !p.isAudited).length})</span>
+            </button>
+
+            <button
               onClick={() => setStockFilter('LOW')}
-              className={`flex-1 py-2 text-[11px] font-bold rounded-xl transition ${
+              className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition cursor-pointer ${
                 stockFilter === 'LOW'
-                  ? 'bg-amber-600 text-white'
+                  ? 'bg-amber-600 text-white font-black'
                   : 'bg-slate-800 text-amber-400 hover:bg-slate-700'
               }`}
               title="Stock bajo"
             >
-              Bajo ({products.filter((p) => p.currentStock > 0 && p.currentStock <= p.minStock).length})
+              ⚠️ Poco Stock ({products.filter((p) => p.currentStock > 0 && p.currentStock <= p.minStock).length})
             </button>
 
             <button
               onClick={() => setStockFilter('OUT')}
-              className={`flex-1 py-2 text-[11px] font-bold rounded-xl transition ${
+              className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition cursor-pointer ${
                 stockFilter === 'OUT'
-                  ? 'bg-rose-600 text-white'
+                  ? 'bg-rose-600 text-white font-black'
                   : 'bg-slate-800 text-rose-400 hover:bg-slate-700'
               }`}
               title="Agotados"
             >
-              Agotados ({products.filter((p) => p.currentStock <= 0).length})
+              🚨 Agotados ({products.filter((p) => p.currentStock <= 0).length})
             </button>
           </div>
         </div>
@@ -371,9 +398,14 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                     <td className="py-3 px-4">
                       <div
                         onClick={() => onViewPhoto && onViewPhoto(p)}
-                        className="font-black text-white text-sm hover:text-blue-400 transition cursor-pointer flex items-center gap-1.5"
+                        className="font-black text-white text-sm hover:text-blue-400 transition cursor-pointer flex items-center gap-1.5 flex-wrap"
                       >
                         <span>{p.name}</span>
+                        {p.isAudited && (
+                          <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-600 px-2 py-0.5 rounded-full font-black flex items-center gap-1 shadow-sm">
+                            <span>✅ CONTADO</span>
+                          </span>
+                        )}
                         <span className="text-[10px] text-blue-400 bg-blue-950 px-1.5 py-0.5 rounded font-bold">
                           📸 Fotos
                         </span>

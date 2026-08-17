@@ -265,6 +265,82 @@ export async function executeStockOperation(params: {
 }
 
 // ----------------------------------------------------
+// REAL-TIME AUDIT & MULTI-DEVICE INVENTORY COUNT
+// ----------------------------------------------------
+
+export async function recordProductAuditDoc(params: {
+  productId: string;
+  count: number;
+  locationCode: string;
+  operatorName?: string;
+  previousStock?: number;
+  productName?: string;
+  barcode?: string;
+  additionalUpdates?: Partial<Product>;
+}): Promise<void> {
+  const {
+    productId,
+    count,
+    locationCode,
+    operatorName = 'Operador Eurotruck',
+    previousStock = 0,
+    productName = '',
+    barcode = '',
+    additionalUpdates = {}
+  } = params;
+
+  const now = new Date().toISOString();
+  const docRef = doc(db, PRODUCTS_COLLECTION, productId);
+
+  await updateDoc(docRef, {
+    currentStock: Math.max(0, count),
+    locationCode: locationCode || '1b1',
+    estante: locationCode || '1b1',
+    isAudited: true,
+    auditedAt: now,
+    auditedBy: operatorName,
+    auditedCount: Math.max(0, count),
+    auditedLocation: locationCode || '1b1',
+    counterName: operatorName,
+    updatedAt: now,
+    ...additionalUpdates,
+  });
+
+  // Log in Kardex Movements for real-time audit history
+  await addMovementDoc({
+    productId,
+    productName: productName || 'Repuesto de Camión',
+    productBarcode: barcode || productId,
+    type: 'STOCKTAKE',
+    quantity: count,
+    previousStock,
+    newStock: count,
+    sourceLocation: locationCode || '1b1',
+    targetLocation: locationCode || '1b1',
+    operator: operatorName,
+    notes: `Conteo físico en góndola ${locationCode}. Stock verificado: ${count} unidades.`,
+    createdAt: now,
+  });
+}
+
+export async function resetAllProductAuditsDoc(products: Product[]): Promise<void> {
+  const CHUNK_SIZE = 400;
+  const now = new Date().toISOString();
+  for (let i = 0; i < products.length; i += CHUNK_SIZE) {
+    const chunk = products.slice(i, i + CHUNK_SIZE);
+    const batch = writeBatch(db);
+    for (const prod of chunk) {
+      const docRef = doc(db, PRODUCTS_COLLECTION, prod.id);
+      batch.update(docRef, {
+        isAudited: false,
+        updatedAt: now,
+      });
+    }
+    await batch.commit();
+  }
+}
+
+// ----------------------------------------------------
 // EXCEL EXPORT MATCHING EUROTRUCK SRL IMAGE & GENERAL REPORT
 // ----------------------------------------------------
 

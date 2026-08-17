@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@keyframes mameiToRojoAlert {
+  0%, 100% {
+    border-color: #ff6b00;
+    box-shadow: 0 0 16px rgba(255, 107, 0, 0.75);
+    background-color: rgba(255, 107, 0, 0.12);
+  }
+  50% {
+    border-color: #ef4444;
+    box-shadow: 0 0 22px rgba(239, 68, 68, 0.95);
+    background-color: rgba(239, 68, 68, 0.22);
+  }
+}
+
+.alert-mamei-rojo {
+  animation: mameiToRojoAlert 1.5s infinite ease-in-out;
+}
+
+/* Reglas de impresión para que SOLO se imprima la etiqueta de código de barras */
+@media print {
+  @page {
+    margin: 0;
+    size: auto;
+  }
+  
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+  
+  header,
+  footer,
+  nav,
+  button,
+  .print\:hidden {
+    display: none !important;
+  }
+  
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .print-page-break {
+    page-break-after: always;
+    break-after: page;
+  }
+}
+

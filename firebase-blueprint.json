@@ -1,0 +1,78 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Represents an item/product stored in the warehouse",
+      "type": "object",
+      "properties": {
+        "sku": { "type": "string", "maxLength": 64 },
+        "barcode": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "maxLength": 100 },
+        "unit": { "type": "string", "maxLength": 32 },
+        "minStock": { "type": "number" },
+        "currentStock": { "type": "number" },
+        "locationCode": { "type": "string", "maxLength": 64 },
+        "priceCost": { "type": "number" },
+        "priceSale": { "type": "number" },
+        "imageUrl": { "type": "string", "maxLength": 50000 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["barcode", "name", "currentStock", "locationCode"]
+    },
+    "Location": {
+      "title": "Location",
+      "description": "Represents a warehouse gondola shelf location",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "maxLength": 64 },
+        "aisle": { "type": "string", "maxLength": 32 },
+        "gondola": { "type": "string", "maxLength": 32 },
+        "level": { "type": "string", "maxLength": 32 },
+        "position": { "type": "string", "maxLength": 32 },
+        "description": { "type": "string", "maxLength": 200 },
+        "maxCapacity": { "type": "number" },
+        "currentCount": { "type": "number" },
+        "status": { "type": "string", "maxLength": 32 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["code", "aisle", "gondola", "level"]
+    },
+    "Movement": {
+      "title": "Movement",
+      "description": "Represents a stock entry, exit, adjustment, or relocation movement",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string", "maxLength": 128 },
+        "productName": { "type": "string", "maxLength": 200 },
+        "productBarcode": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "maxLength": 32 },
+        "quantity": { "type": "number" },
+        "previousStock": { "type": "number" },
+        "newStock": { "type": "number" },
+        "sourceLocation": { "type": "string", "maxLength": 64 },
+        "targetLocation": { "type": "string", "maxLength": 64 },
+        "operator": { "type": "string", "maxLength": 100 },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["productBarcode", "type", "quantity", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Collection of all inventory products"
+    },
+    "/locations/{locationId}": {
+      "schema": "Location",
+      "description": "Collection of gondola locations"
+    },
+    "/movements/{movementId}": {
+      "schema": "Movement",
+      "description": "Log of stock movements and audit trail"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isValidProduct() {
+      let data = request.resource.data;
+      return data.name is string && data.name.size() > 0
+          && data.barcode is string && data.barcode.size() > 0
+          && data.currentStock is number && data.currentStock >= 0
+          && data.locationCode is string;
+    }
+
+    function isValidLocation() {
+      let data = request.resource.data;
+      return data.code is string && data.code.size() > 0
+          && data.aisle is string
+          && data.gondola is string;
+    }
+
+    function isValidMovement() {
+      let data = request.resource.data;
+      return data.productId is string
+          && data.type in ['IN', 'OUT', 'RELOCATION', 'ADJUSTMENT']
+          && data.quantity is number && data.quantity > 0;
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update: if isValidProduct();
+      allow delete: if true;
+    }
+
+    match /locations/{locationId} {
+      allow read: if true;
+      allow create, update: if isValidLocation();
+      allow delete: if true;
+    }
+
+    match /movements/{movementId} {
+      allow read: if true;
+      allow create: if isValidMovement();
+      allow update, delete: if false; // Kardex audit trail is append-only
+    }
+  }
+}

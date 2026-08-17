@@ -1,0 +1,6 @@
+{
+  "name": "Sistema WMS Logística e Inventario",
+  "description": "Sistema WMS multidispositivo para gestión de inventario, ubicaciones en góndola, escáner por cámara, código de barras, impresión de etiquetas térmicas y exportación Excel.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
